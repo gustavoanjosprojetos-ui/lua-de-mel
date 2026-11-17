@@ -1,0 +1,23 @@
+{
+  "quiet_hours": { "start": 0, "end": 7 },
+  "weekly_summary": { "weekday": "domingo", "hour": 9 },
+  "keywords":["aruba", "curacao"],
+  "feeds": [
+    "https://www.melhoresdestinos.com.br/feed",
+    "https://passageirodeprimeira.com/feed/",
+    "https://www.mestredasmilhas.com/feed",
+    "https://www.viajenaviagem.com/feed/"
+  ],
+  "flights": {
+    "origin": "SAO",
+    "google_origins": "GRU,CGH,VCP",
+    "islands": ["AUA", "CUR"],
+    "months_ahead": 12,
+    "min_days": 7,
+    "max_days": 15,
+    "max_price_couple_brl": 8000,
+    "travelers": 2,
+    "market": "br",
+    "serpapi_monthly_budget": 95
+  }
+}

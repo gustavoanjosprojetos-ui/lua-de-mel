@@ -1,0 +1,31 @@
+name: Monitor lua de mel
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"  # 12x/dia, de 2 em 2 horas (01h, 03h, 05h, 07h ... 23h no horário de Brasília)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Procurar promoções
+        run: python monitor.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRAVELPAYOUTS_TOKEN: ${{ secrets.TRAVELPAYOUTS_TOKEN }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+      - name: Salvar o que já foi avisado
+        run: |
+          git config user.name "monitor-bot"
+          git config user.email "monitor-bot@users.noreply.github.com"
+          git add state.json
+          git diff --cached --quiet || (git commit -m "Atualiza estado do monitor" && git push)
