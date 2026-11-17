@@ -103,6 +103,61 @@ def trip_label(trip):
             f"{NAMES[trip['last']]} → SP {trip['back']:%d/%m/%Y} ({days} dias)")
 
 
+MONTH_NAMES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+               "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+
+
+def is_highlight(trip):
+    return trip["depart"].month in CONFIG["flights"].get("highlight_months", [])
+
+
+def highlight_banner(trip):
+    return f"⭐ <b>{MONTH_NAMES[trip['depart'].month - 1].upper()}!</b> ⭐\n" if is_highlight(trip) else ""
+
+
+# ---------- Voo entre as ilhas ----------
+
+HOPS = {}  # (ilha de saída, dia) -> trecho mais barato entre Aruba e Curaçao
+
+
+def fetch_island_hops():
+    """Preços de um trecho só entre as ilhas, por dia, nos próximos meses (Aviasales)."""
+    cfg = CONFIG["flights"]
+    first, second = cfg["islands"]
+    for month in months_ahead(cfg["months_ahead"]):
+        for frm, to in ((first, second), (second, first)):
+            try:
+                days = tp_get("/aviasales/v3/grouped_prices", origin=frm, destination=to,
+                              departure_at=month, group_by="departure_at")
+            except Exception as exc:
+                print(f"Falha Aviasales {frm}→{to} {month}: {exc}", file=sys.stderr)
+                continue
+            for ticket in days.values():
+                key = (frm, day_of(ticket["departure_at"]))
+                if not ticket.get("return_at") and (key not in HOPS or ticket["price"] < HOPS[key]["price"]):
+                    HOPS[key] = ticket
+
+
+def hop_text(trip):
+    """Linha com o voo entre as ilhas para essa viagem: preço, se houver, ou um link de busca."""
+    if trip["first"] == trip["last"]:
+        return ""
+    route = f"{NAMES[trip['first']]} → {NAMES[trip['last']]}"
+    stay = (trip["back"] - trip["depart"]).days
+    options = [HOPS[(trip["first"], trip["depart"] + timedelta(days=d))] for d in range(1, stay)
+               if (trip["first"], trip["depart"] + timedelta(days=d)) in HOPS]
+    if options:
+        hop = min(options, key=lambda t: t["price"])
+        total = (trip["price"] + hop["price"]) * CONFIG["flights"]["travelers"]
+        return (f"🛩️ Voo entre ilhas {route}: {brl(hop['price'])}/pessoa em {day_of(hop['departure_at']):%d/%m} · "
+                f"{link('https://www.aviasales.com' + hop['link'], 'ver')}\n"
+                f"     Total com ele: <b>{brl(total)} o casal</b>")
+    middle = trip["depart"] + timedelta(days=stay // 2)
+    query = f"one way flights from {trip['first']} to {trip['last']} on {middle.isoformat()}"
+    url = "https://www.google.com/travel/flights?" + urllib.parse.urlencode({"q": query, "hl": "pt-BR", "curr": "BRL"})
+    return f"🛩️ Voo entre ilhas {route}: sem preço recente · {link(url, 'buscar no Google Flights')}"
+
+
 # ---------- Sites de promoção ----------
 
 def check_feeds(state):
@@ -237,12 +292,14 @@ def check_aviasales(state):
                 stops = f"{legs[0].get('transfers', '?')} ida / {legs[1].get('transfers', '?')} volta"
             airlines = ", ".join(sorted({leg.get("airline", "?") for leg in legs}))
             send(
-                f"✈️ <b>Abaixo de {brl(CONFIG['flights']['max_price_couple_brl'])} o casal!</b> (Aviasales)\n"
+                highlight_banner(trip)
+                + f"✈️ <b>Abaixo de {brl(CONFIG['flights']['max_price_couple_brl'])} o casal!</b> (Aviasales)\n"
                 f"{trip_label(trip)}\n"
                 f"{price_line(trip['price'])}\n"
                 f"Por pessoa: {detail}\n"
                 f"Cias: {airlines} · conexões: {stops}\n{links}\n"
-                f"<i>Preço visto nas últimas 48h; confira antes de comprar.</i>"
+                + (f"{hop_text(trip)}\n" if hop_text(trip) else "")
+                + "<i>Preço visto nas últimas 48h; confira antes de comprar.</i>"
             )
             alerted[key] = trip["price"]
     return best
@@ -333,10 +390,12 @@ def check_google_flights(state, best_by_month):
         airlines = sorted({seg["airline"] for seg in found.get("flights", []) if seg.get("airline")})
         url = result.get("search_metadata", {}).get("google_flights_url", "")
         send(
-            f"✅ <b>Confirmado no Google Flights: abaixo de {brl(CONFIG['flights']['max_price_couple_brl'])} o casal!</b>\n"
+            highlight_banner(trip)
+            + f"✅ <b>Confirmado no Google Flights: abaixo de {brl(CONFIG['flights']['max_price_couple_brl'])} o casal!</b>\n"
             f"{trip_label(trip)}\n"
             f"{price_line(price)}, ida e volta\n"
             f"Cias (ida): {', '.join(airlines) or '?'}\n{link(url, 'Abrir no Google Flights') if url else ''}"
+            + (f"\n{hop_text(dict(trip, price=price))}" if hop_text(trip) else "")
         )
         state["alerted"][key] = price
 
@@ -373,7 +432,7 @@ def weekly_summary(state, best_by_month):
     travelers = CONFIG["flights"]["travelers"]
     lines = []
     for month, trip in sorted(best_by_month.items()):
-        mark = "✅" if trip["price"] <= limit else "▫️"
+        mark = ("✅" if trip["price"] <= limit else "▫️") + ("⭐" if is_highlight(trip) else "")
         lines.append(
             f"{mark} <b>{trip['depart']:%m/%Y}</b>: {brl(trip['price'] * travelers)} o casal "
             f"({brl(trip['price'])}/pessoa) · {NAMES[trip['first']]} {trip['depart']:%d/%m} → "
@@ -397,10 +456,18 @@ def report_empty_run(best_by_month):
     top = sorted(best_by_month.values(), key=lambda t: t["price"])[:3]
     if top:
         text += "\n\n<b>3 melhores preços agora:</b>"
-        for rank, trip in zip("🥇🥈🥉", top):
-            text += f"\n{rank} {trip_label(trip)}\n     {price_line(trip['price'])}"
+        entries = list(zip("🥇🥈🥉", top))
+        # Se nenhuma das 3 for no mês em destaque (setembro), mostra também a melhor dele.
+        highlighted = sorted((t for t in best_by_month.values() if is_highlight(t)), key=lambda t: t["price"])
+        if highlighted and not any(is_highlight(t) for t in top):
+            entries.append(("⭐", highlighted[0]))
+        for rank, trip in entries:
+            tag = f" ⭐ <b>{MONTH_NAMES[trip['depart'].month - 1]}</b>" if is_highlight(trip) else ""
+            text += f"\n\n{rank} {trip_label(trip)}{tag}\n     {price_line(trip['price'])}"
             if trip_links(trip):
                 text += f"\n     {trip_links(trip)}"
+            if hop_text(trip):
+                text += f"\n     {hop_text(trip)}"
     send(text, silent=True)
 
 
@@ -422,6 +489,8 @@ def main():
         return
     state = load_state()
     check_feeds(state)
+    if TRAVELPAYOUTS_TOKEN:
+        fetch_island_hops()
     best_by_month = check_aviasales(state)
     check_google_flights(state, best_by_month)
     overview = merged_best(state, best_by_month)

@@ -13,6 +13,10 @@ Em cada execução, ele faz três coisas:
 
    Viagens de ida e volta para uma ilha só ficam de fora. Para incluí-las, mude `require_both_islands` para `false` no `config.json`.
 
+   **Voo entre as ilhas:** cada viagem mostra também o trecho Aruba ↔ Curaçao. Se o Aviasales tiver preço para algum dia da estadia, aparece o mais barato e o total do casal com ele. Se não tiver, aparece um link de busca no Google Flights. O teto de preço vale só para as passagens de SP; o voo entre ilhas é informativo.
+
+   **Setembro em destaque:** viagens com ida em setembro chegam com ⭐ **SETEMBRO!** ⭐. Se nenhuma das 3 melhores do ranking for de setembro, a melhor de setembro aparece junto, como item extra. Para destacar outros meses, ajuste `highlight_months` no `config.json` (ex.: `[9, 10]`).
+
    Quando a viagem mais barata de um mês fica **até R$ 8.000 para o casal** (R$ 4.000 por pessoa), chega um aviso. O mesmo mês só gera outro aviso se o preço cair pelo menos 3%.
 3. **Google Flights (confirmação ao vivo):** a cada execução, confere no Google Flights as melhores datas de um mês, em rodízio. Se o preço confirmar abaixo do teto, chega um aviso ✅ com o link.
 
