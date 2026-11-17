@@ -151,9 +151,10 @@ def day_of(timestamp):
 
 
 def collect_trips():
-    """Monta todas as viagens possíveis: ida e volta simples e ida por uma ilha, volta pela outra."""
+    """Monta as viagens possíveis: ida por uma ilha e volta pela outra e, se permitido, ida e volta simples."""
     cfg = CONFIG["flights"]
     origin, islands = cfg["origin"], cfg["islands"]
+    both = cfg.get("require_both_islands", False)
     lengths = range(cfg["min_days"], cfg["max_days"] + 1)
     outbound, inbound, trips = {}, {}, []
     for month in months_ahead(cfg["months_ahead"]):
@@ -168,6 +169,8 @@ def collect_trips():
                 for ticket in days.values():
                     if not ticket.get("return_at"):  # só trechos de ida
                         store[(island, day_of(ticket["departure_at"]))] = ticket
+            if both:
+                continue  # ida e volta para a mesma ilha não serve
             try:
                 roundtrips = tp_get("/aviasales/v3/prices_for_dates", origin=origin, destination=island,
                                     departure_at=month, one_way="false", sorting="price", limit=1000)
@@ -183,6 +186,8 @@ def collect_trips():
                                   "price": ticket["price"], "legs": [ticket]})
     for (first, depart), out in outbound.items():
         for last in islands:
+            if both and last == first:
+                continue
             for days in lengths:
                 back = depart + timedelta(days=days)
                 ret = inbound.get((last, back))
@@ -265,16 +270,36 @@ def search_google_flights(trip):
     return (min(options, key=lambda o: o["price"]) if options else None), result
 
 
+def google_candidates(best_by_month):
+    """Uma viagem por mês para conferir no Google Flights: a melhor do Aviasales ou, sem ela, datas padrão."""
+    cfg = CONFIG["flights"]
+    islands = cfg["islands"]
+    days = (cfg["min_days"] + cfg["max_days"]) // 2
+    candidates = {}
+    for index, month in enumerate(months_ahead(cfg["months_ahead"])):
+        if month in best_by_month:
+            candidates[month] = best_by_month[month]
+            continue
+        depart = max(date.fromisoformat(f"{month}-10"), date.today() + timedelta(days=7))
+        # Alterna o sentido a cada mês: Aruba→Curaçao num, Curaçao→Aruba no seguinte.
+        first, last = islands if index % 2 == 0 else islands[::-1]
+        candidates[month] = {"first": first, "last": last, "depart": depart,
+                             "back": depart + timedelta(days=days), "price": None}
+    return candidates
+
+
 def check_google_flights(state, best_by_month):
     """A cada execução (dentro da cota), confere ao vivo as melhores datas de um mês, em rodízio."""
-    if not SERPAPI_KEY or not best_by_month:
+    if not SERPAPI_KEY:
         return
     if not serpapi_allowed(state):
         print("Cota da SerpApi deste período já usada; Google Flights fica para a próxima.")
         return
     budget = state["serpapi"]
-    months = sorted(best_by_month)
-    trip = best_by_month[months[budget["cursor"] % len(months)]]
+    candidates = google_candidates(best_by_month)
+    months = sorted(candidates)
+    month = months[budget["cursor"] % len(months)]
+    trip = candidates[month]
     budget["cursor"] = (budget["cursor"] + 1) % len(months)
     budget["used"] += 1
     try:
@@ -287,6 +312,10 @@ def check_google_flights(state, best_by_month):
         return
     price, limit = found["price"], per_person_limit()
     print(f"Google Flights: {brl(price)} · {trip_label(trip)}")
+    state.setdefault("google_best", {})[month] = {
+        "first": trip["first"], "last": trip["last"], "depart": trip["depart"].isoformat(),
+        "back": trip["back"].isoformat(), "price": price, "checked": date.today().isoformat(),
+    }
     key = f"google|{trip['depart']}|{trip['back']}|{trip['first']}|{trip['last']}"
     if price <= limit and price < state["alerted"].get(key, float("inf")) * 0.97:
         airlines = sorted({seg["airline"] for seg in found.get("flights", []) if seg.get("airline")})
@@ -298,6 +327,21 @@ def check_google_flights(state, best_by_month):
             f"Cias (ida): {', '.join(airlines) or '?'}\n{link(url, 'Abrir no Google Flights') if url else ''}"
         )
         state["alerted"][key] = price
+
+
+def merged_best(state, best_by_month):
+    """Junta as melhores do Aviasales com os preços conferidos no Google Flights nos últimos 7 dias."""
+    merged = dict(best_by_month)
+    both = CONFIG["flights"].get("require_both_islands", False)
+    for month, saved in state.get("google_best", {}).items():
+        trip = dict(saved, depart=date.fromisoformat(saved["depart"]), back=date.fromisoformat(saved["back"]))
+        if date.fromisoformat(saved["checked"]) < date.today() - timedelta(days=7) or trip["depart"] < date.today():
+            continue
+        if both and trip["first"] == trip["last"]:
+            continue
+        if month not in merged or trip["price"] < merged[month]["price"]:
+            merged[month] = trip
+    return merged
 
 
 # ---------- Resumo semanal ----------
@@ -365,9 +409,10 @@ def main():
     check_feeds(state)
     best_by_month = check_aviasales(state)
     check_google_flights(state, best_by_month)
-    weekly_summary(state, best_by_month)
+    overview = merged_best(state, best_by_month)
+    weekly_summary(state, overview)
     if SENT == 0 and CONFIG.get("report_empty_runs", True):
-        report_empty_run(best_by_month)
+        report_empty_run(overview)
     save_state(state)
 
 

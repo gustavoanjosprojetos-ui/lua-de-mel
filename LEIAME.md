@@ -10,7 +10,8 @@ Em cada execução, ele faz três coisas:
 2. **Aviasales (o ano todo):** procura os preços de cada dia dos próximos 12 meses saindo de São Paulo (GRU, CGH ou VCP), em viagens de 7 a 15 dias. Ele monta estas combinações:
    - SP → Aruba … Curaçao → SP
    - SP → Curaçao … Aruba → SP
-   - ida e volta só para Aruba, ou só para Curaçao
+
+   Viagens de ida e volta para uma ilha só ficam de fora. Para incluí-las, mude `require_both_islands` para `false` no `config.json`.
 
    Quando a viagem mais barata de um mês fica **até R$ 8.000 para o casal** (R$ 4.000 por pessoa), chega um aviso. O mesmo mês só gera outro aviso se o preço cair pelo menos 3%.
 3. **Google Flights (confirmação ao vivo):** a cada execução, confere no Google Flights as melhores datas de um mês, em rodízio. Se o preço confirmar abaixo do teto, chega um aviso ✅ com o link.

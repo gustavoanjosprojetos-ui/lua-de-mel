@@ -12,6 +12,7 @@
     "origin": "SAO",
     "google_origins": "GRU,CGH,VCP",
     "islands": ["AUA", "CUR"],
+    "require_both_islands": true,
     "months_ahead": 12,
     "min_days": 7,
     "max_days": 15,
