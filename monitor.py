@@ -34,6 +34,7 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 TRAVELPAYOUTS_TOKEN = os.environ.get("TRAVELPAYOUTS_TOKEN", "")
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY", "")
 NAMES = {"AUA": "Aruba", "CUR": "Curaçao"}
+SENT = 0  # mensagens enviadas nesta execução
 
 
 def http_get(url):
@@ -58,12 +59,14 @@ def brasilia_now():
     return datetime.now(timezone.utc) - timedelta(hours=3)
 
 
-def send(text):
+def send(text, silent=False):
+    global SENT
+    SENT += 1
     if DRY_RUN or not TELEGRAM_TOKEN:
         print(text, "\n" + "-" * 40)
         return
     # De madrugada a mensagem chega sem som.
-    quiet = CONFIG["quiet_hours"]["start"] <= brasilia_now().hour < CONFIG["quiet_hours"]["end"]
+    quiet = silent or CONFIG["quiet_hours"]["start"] <= brasilia_now().hour < CONFIG["quiet_hours"]["end"]
     data = urllib.parse.urlencode({
         "chat_id": TELEGRAM_CHAT_ID, "text": text, "parse_mode": "HTML", "disable_web_page_preview": "true",
         "disable_notification": "true" if quiet else "false",
@@ -330,6 +333,16 @@ def weekly_summary(state, best_by_month):
     state["last_summary"] = week
 
 
+def report_empty_run(best_by_month):
+    """Avisa, sem som, que a execução rodou e não achou nada novo."""
+    text = f"🔎 Rodei às {brasilia_now():%Hh%M} e não encontrei promoção nova."
+    if best_by_month:
+        cheapest = min(best_by_month.values(), key=lambda t: t["price"])
+        total = cheapest["price"] * CONFIG["flights"]["travelers"]
+        text += f"\nMenor preço agora: {brl(total)} o casal ({cheapest['depart']:%d/%m/%Y}, {NAMES[cheapest['first']]})."
+    send(text, silent=True)
+
+
 # ---------- Telegram ----------
 
 def show_chat_ids():
@@ -351,6 +364,8 @@ def main():
     best_by_month = check_aviasales(state)
     check_google_flights(state, best_by_month)
     weekly_summary(state, best_by_month)
+    if SENT == 0 and CONFIG.get("report_empty_runs", True):
+        report_empty_run(best_by_month)
     save_state(state)
 
 

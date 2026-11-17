@@ -2,9 +2,9 @@ name: Monitor lua de mel
 
 on:
   schedule:
-    # 12x/dia, de 2 em 2 horas (01h17, 03h17 ... 23h17 no horário de Brasília).
+    # 24x/dia, de hora em hora (00h17, 01h17 ... 23h17).
     # Minuto 17 em vez de 0: na virada da hora o GitHub fica sobrecarregado e atrasa ou pula execuções agendadas.
-    - cron: "17 */2 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
