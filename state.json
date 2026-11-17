@@ -1,0 +1,13 @@
+{
+  "seen_posts": [],
+  "alerted": {
+    "aviasales|2027-01": 3351,
+    "aviasales|2027-10": 2860,
+    "google|2027-01-11|2027-01-22|AUA|AUA": 3713
+  },
+  "serpapi": {
+    "month": "2026-11",
+    "used": 1,
+    "cursor": 1
+  }
+}
