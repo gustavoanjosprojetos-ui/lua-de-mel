@@ -2,7 +2,7 @@
 
 O monitor roda **de hora em hora** (00h17, 01h17 … 23h17), inclusive de madrugada. Os avisos que chegam entre 00h e 07h vêm **sem som**, para não acordar ninguém. Esse horário de silêncio pode ser ajustado em `quiet_hours`, no `config.json`.
 
-Quando uma execução não encontra nada novo, o bot manda uma mensagem curta, **sem som**, avisando que rodou, junto com o menor preço do momento. Para desligar esse aviso, coloque `"report_empty_runs": false` no `config.json`.
+Quando uma execução não encontra nada novo, o bot manda uma mensagem **sem som** avisando que rodou, com os **3 melhores preços do momento** (um por mês, para mostrar datas diferentes). Para desligar esse aviso, coloque `"report_empty_runs": false` no `config.json`.
 
 Em cada execução, ele faz três coisas:
 

@@ -336,10 +336,12 @@ def weekly_summary(state, best_by_month):
 def report_empty_run(best_by_month):
     """Avisa, sem som, que a execução rodou e não achou nada novo."""
     text = f"🔎 Rodei às {brasilia_now():%Hh%M} e não encontrei promoção nova."
-    if best_by_month:
-        cheapest = min(best_by_month.values(), key=lambda t: t["price"])
-        total = cheapest["price"] * CONFIG["flights"]["travelers"]
-        text += f"\nMenor preço agora: {brl(total)} o casal ({cheapest['depart']:%d/%m/%Y}, {NAMES[cheapest['first']]})."
+    # As 3 melhores, uma por mês, para mostrar opções de datas diferentes.
+    top = sorted(best_by_month.values(), key=lambda t: t["price"])[:3]
+    if top:
+        text += "\n\n<b>3 melhores preços agora:</b>"
+        for rank, trip in zip("🥇🥈🥉", top):
+            text += f"\n{rank} {trip_label(trip)}\n     {price_line(trip['price'])}"
     send(text, silent=True)
 
 
