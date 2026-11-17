@@ -197,6 +197,19 @@ def collect_trips():
     return trips
 
 
+def trip_links(trip):
+    """Links para comprar: os trechos no Aviasales ou a busca no Google Flights."""
+    legs = [leg for leg in trip.get("legs", []) if leg.get("link")]
+    if len(legs) == 1:
+        return link("https://www.aviasales.com" + legs[0]["link"], "Ver no Aviasales")
+    if len(legs) == 2:
+        return (link("https://www.aviasales.com" + legs[0]["link"], "Ida (Aviasales)") + " · "
+                + link("https://www.aviasales.com" + legs[1]["link"], "Volta (Aviasales)"))
+    if trip.get("url"):
+        return link(trip["url"], "Ver no Google Flights")
+    return ""
+
+
 def check_aviasales(state):
     """Avisa a viagem mais barata de cada mês quando fica abaixo do teto. Devolve as melhores por mês."""
     if not TRAVELPAYOUTS_TOKEN:
@@ -215,14 +228,12 @@ def check_aviasales(state):
         # Repete o aviso do mesmo mês só se cair pelo menos 3%.
         if trip["price"] <= limit and trip["price"] < alerted.get(key, float("inf")) * 0.97:
             legs = trip["legs"]
+            links = trip_links(trip)
             if len(legs) == 1:
                 detail = "ida e volta na mesma passagem"
-                links = link("https://www.aviasales.com" + legs[0]["link"], "Ver no Aviasales")
                 stops = f"{legs[0].get('transfers', '?')} ida / {legs[0].get('return_transfers', '?')} volta"
             else:
                 detail = f"ida {brl(legs[0]['price'])} + volta {brl(legs[1]['price'])}"
-                links = (link("https://www.aviasales.com" + legs[0]["link"], "Ida") + " · "
-                         + link("https://www.aviasales.com" + legs[1]["link"], "Volta"))
                 stops = f"{legs[0].get('transfers', '?')} ida / {legs[1].get('transfers', '?')} volta"
             airlines = ", ".join(sorted({leg.get("airline", "?") for leg in legs}))
             send(
@@ -315,6 +326,7 @@ def check_google_flights(state, best_by_month):
     state.setdefault("google_best", {})[month] = {
         "first": trip["first"], "last": trip["last"], "depart": trip["depart"].isoformat(),
         "back": trip["back"].isoformat(), "price": price, "checked": date.today().isoformat(),
+        "url": result.get("search_metadata", {}).get("google_flights_url", ""),
     }
     key = f"google|{trip['depart']}|{trip['back']}|{trip['first']}|{trip['last']}"
     if price <= limit and price < state["alerted"].get(key, float("inf")) * 0.97:
@@ -366,6 +378,7 @@ def weekly_summary(state, best_by_month):
             f"{mark} <b>{trip['depart']:%m/%Y}</b>: {brl(trip['price'] * travelers)} o casal "
             f"({brl(trip['price'])}/pessoa) · {NAMES[trip['first']]} {trip['depart']:%d/%m} → "
             f"{NAMES[trip['last']]} {trip['back']:%d/%m}"
+            + (f"\n     {trip_links(trip)}" if trip_links(trip) else "")
         )
     cheapest = min(best_by_month.values(), key=lambda t: t["price"])
     send(
@@ -386,6 +399,8 @@ def report_empty_run(best_by_month):
         text += "\n\n<b>3 melhores preços agora:</b>"
         for rank, trip in zip("🥇🥈🥉", top):
             text += f"\n{rank} {trip_label(trip)}\n     {price_line(trip['price'])}"
+            if trip_links(trip):
+                text += f"\n     {trip_links(trip)}"
     send(text, silent=True)
 
 
