@@ -7,11 +7,12 @@
     "google|2026-12-10|2026-12-21|CUR|AUA": 2673,
     "google|2027-02-10|2027-02-21|CUR|AUA": 3086,
     "google|2027-09-08|2027-09-19|CUR|AUA": 3122,
-    "google|2027-03-10|2027-03-21|AUA|CUR": 3163
+    "google|2027-03-10|2027-03-21|AUA|CUR": 3163,
+    "google|2027-09-13|2027-09-24|AUA|CUR": 3158
   },
   "serpapi": {
     "month": "2026-11",
-    "used": 8,
+    "used": 9,
     "cursor": 5
   },
   "google_best": {
