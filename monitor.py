@@ -148,10 +148,12 @@ def hop_text(trip):
                if (trip["first"], trip["depart"] + timedelta(days=d)) in HOPS]
     if options:
         hop = min(options, key=lambda t: t["price"])
-        total = (trip["price"] + hop["price"]) * CONFIG["flights"]["travelers"]
-        return (f"🛩️ Voo entre ilhas {route}: {brl(hop['price'])}/pessoa em {day_of(hop['departure_at']):%d/%m} · "
-                f"{link('https://www.aviasales.com' + hop['link'], 'ver')}\n"
-                f"     Total com ele: <b>{brl(total)} o casal</b>")
+        text = (f"🛩️ Voo entre ilhas {route}: {brl(hop['price'])}/pessoa em {day_of(hop['departure_at']):%d/%m} · "
+                f"{link('https://www.aviasales.com' + hop['link'], 'ver')}")
+        if trip.get("price"):
+            total = (trip["price"] + hop["price"]) * CONFIG["flights"]["travelers"]
+            text += f"\n     Total com ele: <b>{brl(total)} o casal</b>"
+        return text
     middle = trip["depart"] + timedelta(days=stay // 2)
     query = f"one way flights from {trip['first']} to {trip['last']} on {middle.isoformat()}"
     url = "https://www.google.com/travel/flights?" + urllib.parse.urlencode({"q": query, "hl": "pt-BR", "curr": "BRL"})
@@ -395,7 +397,7 @@ def check_google_flights(state, best_by_month):
             f"{trip_label(trip)}\n"
             f"{price_line(price)}, ida e volta\n"
             f"Cias (ida): {', '.join(airlines) or '?'}\n{link(url, 'Abrir no Google Flights') if url else ''}"
-            + (f"\n{hop_text(dict(trip, price=price))}" if hop_text(trip) else "")
+            + (f"\n{hop_text(dict(trip, price=price))}" if hop_text(dict(trip, price=price)) else "")
         )
         state["alerted"][key] = price
 
@@ -488,16 +490,20 @@ def main():
         show_chat_ids()
         return
     state = load_state()
-    check_feeds(state)
-    if TRAVELPAYOUTS_TOKEN:
-        fetch_island_hops()
-    best_by_month = check_aviasales(state)
-    check_google_flights(state, best_by_month)
-    overview = merged_best(state, best_by_month)
-    weekly_summary(state, overview)
-    if SENT == 0 and CONFIG.get("report_empty_runs", True):
-        report_empty_run(overview)
-    save_state(state)
+    # Salva o estado mesmo se algo falhar no meio: assim um erro não faz repetir
+    # avisos já enviados nem gastar de novo a cota da SerpApi sem registrar.
+    try:
+        check_feeds(state)
+        if TRAVELPAYOUTS_TOKEN:
+            fetch_island_hops()
+        best_by_month = check_aviasales(state)
+        check_google_flights(state, best_by_month)
+        overview = merged_best(state, best_by_month)
+        weekly_summary(state, overview)
+        if SENT == 0 and CONFIG.get("report_empty_runs", True):
+            report_empty_run(overview)
+    finally:
+        save_state(state)
 
 
 if __name__ == "__main__":
