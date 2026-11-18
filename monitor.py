@@ -59,9 +59,26 @@ def brasilia_now():
     return datetime.now(timezone.utc) - timedelta(hours=3)
 
 
+OUTBOX = []  # mensagens desta execução; saem todas no fim, com a melhor oferta de setembro
+
+
 def send(text, silent=False):
     global SENT
     SENT += 1
+    OUTBOX.append((text, silent))
+
+
+def flush(overview):
+    """Envia as mensagens da execução, cada uma com a melhor oferta do mês em destaque no final."""
+    footer, label = highlight_footer(overview)
+    for text, silent in OUTBOX:
+        if footer and (not label or label not in text):
+            text += "\n\n" + footer
+        deliver(text, silent)
+    OUTBOX.clear()
+
+
+def deliver(text, silent=False):
     if DRY_RUN or not TELEGRAM_TOKEN:
         print(text, "\n" + "-" * 40)
         return
@@ -368,9 +385,21 @@ def check_google_flights(state, best_by_month):
     budget = state["serpapi"]
     candidates = google_candidates(best_by_month)
     months = sorted(candidates)
-    month = months[budget["cursor"] % len(months)]
+    highlighted = [m for m in months if int(m[5:]) in CONFIG["flights"].get("highlight_months", [])]
+    if highlighted and budget["used"] % 2 == 0:
+        # Metade das buscas vai para o mês em destaque, para o preço de setembro estar sempre fresco.
+        month = highlighted[(budget["used"] // 2) % len(highlighted)]
+    else:
+        month = months[budget["cursor"] % len(months)]
+        budget["cursor"] = (budget["cursor"] + 1) % len(months)
     trip = candidates[month]
-    budget["cursor"] = (budget["cursor"] + 1) % len(months)
+    if month in highlighted and trip.get("price") is None:
+        # Sem preço do Aviasales em setembro: cada busca tenta outra data e outro sentido.
+        turn = budget["used"] // 2
+        islands = CONFIG["flights"]["islands"]
+        first, last = islands if turn % 2 == 0 else islands[::-1]
+        depart = date.fromisoformat(f"{month}-{[3, 8, 13, 18, 23][turn // 2 % 5]:02d}")
+        trip = dict(trip, first=first, last=last, depart=depart, back=depart + (trip["back"] - trip["depart"]))
     budget["used"] += 1
     try:
         found, result = search_google_flights(trip)
@@ -382,11 +411,18 @@ def check_google_flights(state, best_by_month):
         return
     price, limit = found["price"], per_person_limit()
     print(f"Google Flights: {brl(price)} · {trip_label(trip)}")
-    state.setdefault("google_best", {})[month] = {
+    found_trip = {
         "first": trip["first"], "last": trip["last"], "depart": trip["depart"].isoformat(),
         "back": trip["back"].isoformat(), "price": price, "checked": date.today().isoformat(),
         "url": result.get("search_metadata", {}).get("google_flights_url", ""),
     }
+    saved = state.setdefault("google_best", {}).get(month)
+    # Guarda a opção mais barata do mês; troca se esta for mais barata, se for a mesma viagem
+    # (preço atualizado) ou se a guardada tiver mais de 7 dias.
+    if (not saved or price <= saved["price"]
+            or (saved["depart"], saved["first"]) == (found_trip["depart"], found_trip["first"])
+            or date.fromisoformat(saved["checked"]) < date.today() - timedelta(days=7)):
+        state["google_best"][month] = found_trip
     key = f"google|{trip['depart']}|{trip['back']}|{trip['first']}|{trip['last']}"
     if price <= limit and price < state["alerted"].get(key, float("inf")) * 0.97:
         airlines = sorted({seg["airline"] for seg in found.get("flights", []) if seg.get("airline")})
@@ -458,12 +494,8 @@ def report_empty_run(best_by_month):
     top = sorted(best_by_month.values(), key=lambda t: t["price"])[:3]
     if top:
         text += "\n\n<b>3 melhores preços agora:</b>"
-        entries = list(zip("🥇🥈🥉", top))
-        # Se nenhuma das 3 for no mês em destaque (setembro), mostra também a melhor dele.
-        highlighted = sorted((t for t in best_by_month.values() if is_highlight(t)), key=lambda t: t["price"])
-        if highlighted and not any(is_highlight(t) for t in top):
-            entries.append(("⭐", highlighted[0]))
-        for rank, trip in entries:
+        # A melhor de setembro, se não estiver entre as 3, entra no rodapé que o flush() acrescenta.
+        for rank, trip in zip("🥇🥈🥉", top):
             tag = f" ⭐ <b>{MONTH_NAMES[trip['depart'].month - 1]}</b>" if is_highlight(trip) else ""
             text += f"\n\n{rank} {trip_label(trip)}{tag}\n     {price_line(trip['price'])}"
             if trip_links(trip):
@@ -471,6 +503,26 @@ def report_empty_run(best_by_month):
             if hop_text(trip):
                 text += f"\n     {hop_text(trip)}"
     send(text, silent=True)
+
+
+def highlight_footer(overview):
+    """Rodapé com a melhor oferta do mês em destaque (setembro), mesmo acima do teto.
+    Devolve o texto e o rótulo da viagem, para não repetir em mensagens que já a mostram."""
+    months = CONFIG["flights"].get("highlight_months", [])
+    if not months:
+        return "", ""
+    name = " / ".join(MONTH_NAMES[m - 1] for m in months)
+    options = [t for t in overview.values() if is_highlight(t) and t.get("price")]
+    if not options:
+        return f"⭐ <b>Melhor oferta de {name}:</b> ainda sem preço conferido.", ""
+    best = min(options, key=lambda t: t["price"])
+    above = " (acima do teto)" if best["price"] > per_person_limit() else ""
+    text = f"⭐ <b>Melhor oferta de {name}</b>{above}\n{trip_label(best)}\n     {price_line(best['price'])}"
+    if trip_links(best):
+        text += f"\n     {trip_links(best)}"
+    if hop_text(best):
+        text += f"\n     {hop_text(best)}"
+    return text, trip_label(best)
 
 
 # ---------- Telegram ----------
@@ -492,6 +544,7 @@ def main():
     state = load_state()
     # Salva o estado mesmo se algo falhar no meio: assim um erro não faz repetir
     # avisos já enviados nem gastar de novo a cota da SerpApi sem registrar.
+    overview = {}
     try:
         check_feeds(state)
         if TRAVELPAYOUTS_TOKEN:
@@ -503,7 +556,10 @@ def main():
         if SENT == 0 and CONFIG.get("report_empty_runs", True):
             report_empty_run(overview)
     finally:
-        save_state(state)
+        try:
+            flush(overview)
+        finally:
+            save_state(state)
 
 
 if __name__ == "__main__":

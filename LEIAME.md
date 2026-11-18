@@ -15,7 +15,7 @@ Em cada execução, ele faz três coisas:
 
    **Voo entre as ilhas:** cada viagem mostra também o trecho Aruba ↔ Curaçao. Se o Aviasales tiver preço para algum dia da estadia, aparece o mais barato e o total do casal com ele. Se não tiver, aparece um link de busca no Google Flights. O teto de preço vale só para as passagens de SP; o voo entre ilhas é informativo.
 
-   **Setembro em destaque:** viagens com ida em setembro chegam com ⭐ **SETEMBRO!** ⭐. Se nenhuma das 3 melhores do ranking for de setembro, a melhor de setembro aparece junto, como item extra. Para destacar outros meses, ajuste `highlight_months` no `config.json` (ex.: `[9, 10]`).
+   **Setembro em destaque:** viagens com ida em setembro chegam com ⭐ **SETEMBRO!** ⭐. Além disso, **toda mensagem** do bot termina com a **melhor oferta de setembro**, mesmo acima do teto (exceto quando a própria mensagem já é sobre ela). Metade das buscas no Google Flights vai para setembro, testando datas e sentidos diferentes, para esse preço estar sempre atualizado. Para destacar outros meses, ajuste `highlight_months` no `config.json` (ex.: `[9, 10]`).
 
    Quando a viagem mais barata de um mês fica **até R$ 8.000 para o casal** (R$ 4.000 por pessoa), chega um aviso. O mesmo mês só gera outro aviso se o preço cair pelo menos 3%.
 3. **Google Flights (confirmação ao vivo):** a cada execução, confere no Google Flights as melhores datas de um mês, em rodízio. Se o preço confirmar abaixo do teto, chega um aviso ✅ com o link.
