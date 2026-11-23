@@ -27,7 +27,7 @@
   },
   "serpapi": {
     "month": "2026-11",
-    "used": 70,
+    "used": 71,
     "cursor": 0
   },
   "google_best": {
@@ -63,8 +63,8 @@
       "last": "AUA",
       "depart": "2027-09-13",
       "back": "2027-09-24",
-      "price": 3170,
-      "checked": "2026-11-19",
+      "price": 3206,
+      "checked": "2026-11-23",
       "url": "https://www.google.com/travel/flights?hl=pt-BR&gl=br&curr=BRL&tfs=CBwQAhowEgoyMDI3LTA5LTEzagcIARIDR1JVagcIARIDQ0dIagcIARIDVkNQcgcIARIDQ1VSGjASCjIwMjctMDktMjRqBwgBEgNBVUFyBwgBEgNHUlVyBwgBEgNDR0hyBwgBEgNWQ1BAAUgBcAGYAQM&tfu=EgIIAQ"
     },
     "2027-03": {
