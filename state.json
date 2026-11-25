@@ -5,7 +5,7 @@
     "aviasales|2027-10": 2860,
     "google|2027-01-11|2027-01-22|AUA|AUA": 3713,
     "google|2026-12-10|2026-12-21|CUR|AUA": 2673,
-    "google|2027-02-10|2027-02-21|CUR|AUA": 3086,
+    "google|2027-02-10|2027-02-21|CUR|AUA": 2937,
     "google|2027-09-08|2027-09-19|CUR|AUA": 3122,
     "google|2027-03-10|2027-03-21|AUA|CUR": 2971,
     "google|2027-09-13|2027-09-24|AUA|CUR": 3158,
@@ -28,8 +28,8 @@
   },
   "serpapi": {
     "month": "2026-11",
-    "used": 77,
-    "cursor": 3
+    "used": 78,
+    "cursor": 4
   },
   "google_best": {
     "2026-12": {
@@ -55,8 +55,8 @@
       "last": "AUA",
       "depart": "2027-02-10",
       "back": "2027-02-21",
-      "price": 3176,
-      "checked": "2026-11-19",
+      "price": 2937,
+      "checked": "2026-11-25",
       "url": "https://www.google.com/travel/flights?hl=pt-BR&gl=br&curr=BRL&tfs=CBwQAhowEgoyMDI3LTAyLTEwagcIARIDR1JVagcIARIDQ0dIagcIARIDVkNQcgcIARIDQ1VSGjASCjIwMjctMDItMjFqBwgBEgNBVUFyBwgBEgNHUlVyBwgBEgNDR0hyBwgBEgNWQ1BAAUgBcAGYAQM&tfu=EgIIAQ"
     },
     "2027-09": {
