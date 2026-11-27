@@ -1,6 +1,7 @@
 {
   "seen_posts": [
-    "https://passageirodeprimeira.com/?p=584981"
+    "https://passageirodeprimeira.com/?p=584981",
+    "https://www.melhoresdestinos.com.br/?post_type=promocao&p=650359"
   ],
   "alerted": {
     "aviasales|2027-01": 3351,
@@ -15,7 +16,7 @@
     "google|2027-09-13|2027-09-24|CUR|AUA": 3122,
     "google|2027-05-10|2027-05-21|AUA|CUR": 2727,
     "google|2027-09-18|2027-09-29|AUA|CUR": 3186,
-    "google|2027-06-10|2027-06-21|CUR|AUA": 3166,
+    "google|2027-06-10|2027-06-21|CUR|AUA": 2706,
     "google|2027-09-18|2027-09-29|CUR|AUA": 3137,
     "google|2027-07-10|2027-07-21|AUA|CUR": 3377,
     "google|2027-09-23|2027-10-04|AUA|CUR": 3186,
@@ -30,8 +31,8 @@
   },
   "serpapi": {
     "month": "2026-11",
-    "used": 85,
-    "cursor": 7
+    "used": 86,
+    "cursor": 8
   },
   "google_best": {
     "2026-12": {
@@ -102,8 +103,8 @@
       "last": "AUA",
       "depart": "2027-06-10",
       "back": "2027-06-21",
-      "price": 3179,
-      "checked": "2026-11-20",
+      "price": 2706,
+      "checked": "2026-11-27",
       "url": "https://www.google.com/travel/flights?hl=pt-BR&gl=br&curr=BRL&tfs=CBwQAhowEgoyMDI3LTA2LTEwagcIARIDR1JVagcIARIDQ0dIagcIARIDVkNQcgcIARIDQ1VSGjASCjIwMjctMDYtMjFqBwgBEgNBVUFyBwgBEgNHUlVyBwgBEgNDR0hyBwgBEgNWQ1BAAUgBcAGYAQM&tfu=EgIIAQ"
     },
     "2027-07": {
