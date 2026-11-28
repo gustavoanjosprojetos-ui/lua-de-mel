@@ -31,8 +31,8 @@
   },
   "serpapi": {
     "month": "2026-11",
-    "used": 87,
-    "cursor": 8
+    "used": 88,
+    "cursor": 9
   },
   "google_best": {
     "2026-12": {
@@ -112,8 +112,8 @@
       "last": "CUR",
       "depart": "2027-07-10",
       "back": "2027-07-21",
-      "price": 3392,
-      "checked": "2026-11-20",
+      "price": 3992,
+      "checked": "2026-11-28",
       "url": "https://www.google.com/travel/flights?hl=pt-BR&gl=br&curr=BRL&tfs=CBwQAhowEgoyMDI3LTA3LTEwagcIARIDR1JVagcIARIDQ0dIagcIARIDVkNQcgcIARIDQVVBGjASCjIwMjctMDctMjFqBwgBEgNDVVJyBwgBEgNHUlVyBwgBEgNDR0hyBwgBEgNWQ1BAAUgBcAGYAQM&tfu=EgIIAQ"
     },
     "2027-08": {
